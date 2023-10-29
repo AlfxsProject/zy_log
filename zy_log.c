@@ -188,12 +188,12 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
                 offset += strftime(msg + offset, log->length - offset, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset,
                                    "</date>\n\t<location>\n\t\t<file>%s</file>\n\t\t<line>%zu</"
-                                   "line>\n\t\t<function>%s</function>\n\t</location>\n\t<message>",
+                                   "line>\n\t\t<function>%s</function>\n\t</location>\n\t<message>\n",
                                    file, line, function);
                 va_start(args, format);
                 offset += vsnprintf(msg + offset, log->length - offset, format, args);
                 va_end(args);
-                offset += snprintf(msg + offset, log->length - offset, "</message>\n</log>");
+                offset += snprintf(msg + offset, log->length - offset, "\n\t</message>\n</log>\n");
                 break;
             default:
                 break;
