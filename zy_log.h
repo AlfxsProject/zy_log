@@ -72,8 +72,8 @@ extern "C"
     __attribute__((nonnull)) size_t zy_log_get_length(const zy_log_t *log);
     __attribute__((nonnull)) bool zy_log_set_filter(zy_log_t *log, zy_log_type_t max);
     __attribute__((nonnull)) zy_log_type_t zy_log_get_filter(const zy_log_t *log);
-    __attribute__((nonnull)) bool zy_log_set_format(zy_log_t *log, zy_format_t format);
-    __attribute__((nonnull)) zy_format_t zy_log_get_format(const zy_log_t *log);
+    __attribute__((nonnull)) bool zy_log_set_output_format(zy_log_t *log, zy_format_t format);
+    __attribute__((nonnull)) zy_format_t zy_log_get_output_format(const zy_log_t *log);
     __attribute__((nonnull)) bool zy_log_set_time_format(zy_log_t *log, const char *format);
     __attribute__((nonnull)) const char *zy_log_get_time_format(const zy_log_t *log);
 

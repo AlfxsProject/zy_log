@@ -25,9 +25,9 @@ struct zy_log_s
     const char *const alloc;
     const int fd;
     size_t length;
-    zy_log_type_t type;
-    zy_format_t format;
-    const char *time_string;
+    zy_log_type_t max;
+    zy_format_t output_format;
+    const char *time_format;
 };
 
 int zy_log_construct(zy_log_t **log, const zy_alloc_t *alloc, int file_descriptor)
@@ -38,9 +38,9 @@ int zy_log_construct(zy_log_t **log, const zy_alloc_t *alloc, int file_descripto
         const zy_log_t log_init = {.alloc = (const char *const)alloc,
                                    .fd = file_descriptor,
                                    .length = ZY_LOG_LENGTH_DEFAULT,
-                                   .type = ZY_ERROR,
-                                   .format = ZY_FORMAT_PLAIN,
-                                   .time_string = ZY_LOG_TIME_FORMAT_DEFAULT};
+                                   .max = ZY_ERROR,
+                                   .output_format = ZY_FORMAT_PLAIN,
+                                   .time_format = ZY_LOG_TIME_FORMAT_DEFAULT};
         memcpy((void *)*log, &log_init, sizeof(zy_log_t));
     }
     return r;
@@ -69,7 +69,7 @@ bool zy_log_set_filter(zy_log_t *log, zy_log_type_t max)
 {
     if (max <= ZY_LOG_TYPE_MAX)
     {
-        log->type = max;
+        log->max = max;
         return true;
     }
     return false;
@@ -77,32 +77,32 @@ bool zy_log_set_filter(zy_log_t *log, zy_log_type_t max)
 
 zy_log_type_t zy_log_get_filter(const zy_log_t *log)
 {
-    return log->type;
+    return log->max;
 }
 
-bool zy_log_set_format(zy_log_t *log, zy_format_t format)
+bool zy_log_set_output_format(zy_log_t *log, zy_format_t format)
 {
     if (format <= ZY_LOG_FORMAT_MAX)
     {
-        log->format = format;
+        log->output_format = format;
         return true;
     }
     return false;
 }
 
-zy_format_t zy_log_get_format(const zy_log_t *log)
+zy_format_t zy_log_get_output_format(const zy_log_t *log)
 {
-    return log->format;
+    return log->output_format;
 }
 
 bool zy_log_set_time_format(zy_log_t *log, const char *format)
 {
-    log->time_string = format;
+    log->time_format = format;
     return true;
 }
 const char *zy_log_get_time_format(const zy_log_t *log)
 {
-    return log->time_string;
+    return log->time_format;
 }
 
 /*
@@ -112,7 +112,7 @@ const char *zy_log_get_time_format(const zy_log_t *log)
 int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, size_t line, const char *function,
                   const char *format, ...)
 {
-    if (type <= log->type)
+    if (type <= log->max)
     {
         char *msg;
         size_t offset = 0;
@@ -126,10 +126,10 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
             now = time(NULL);
             localtime_r(&now, &tm);
 
-            switch (log->format)
+            switch (log->output_format)
             {
             case ZY_FORMAT_PLAIN:
-                offset += strftime(msg, log->length, log->time_string, &tm);
+                offset += strftime(msg, log->length, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset, " %s:%zu (%s) ", file, line, function);
                 switch (type)
                 {
@@ -150,7 +150,7 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
                 va_end(args);
                 break;
             case ZY_FORMAT_CSV:
-                offset += strftime(msg, log->length, log->time_string, &tm);
+                offset += strftime(msg, log->length, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset, ",%s,%zu,%s,", file, line, function);
                 switch (type)
                 {
@@ -174,18 +174,18 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
                 switch (type)
                 {
                 case ZY_ERROR:
-                    offset += snprintf(msg + offset, log->length - offset, "<log type=\"error\">\n\t<date>");
+                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"error\">\n\t<date>");
                     break;
                 case ZY_WARN:
-                    offset += snprintf(msg + offset, log->length - offset, "<log type=\"warning\">\n\t<date>");
+                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"warning\">\n\t<date>");
                     break;
                 case ZY_INFO:
-                    offset += snprintf(msg + offset, log->length - offset, "<log type=\"info\">\n\t<date>");
+                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"info\">\n\t<date>");
                     break;
                 default:
                     break;
                 }
-                offset += strftime(msg, log->length, log->time_string, &tm);
+                offset += strftime(msg, log->length, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset,
                                    "</date>\n\t<location>\n\t\t<file>%s</file>\n\t\t<line>%zu</"
                                    "line>\n\t\t<function>%s</function>\n\t</location>\n\t<message>",
