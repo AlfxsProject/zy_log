@@ -1,0 +1,3 @@
+[submodule "zy_alloc"]
+	path = zy_alloc
+	url = https://github.com/AlfxsProject/zy_alloc.git
