@@ -129,7 +129,7 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
             switch (log->output_format)
             {
             case ZY_FORMAT_PLAIN:
-                offset += strftime(msg, log->length, log->time_format, &tm);
+                offset = strftime(msg, log->length, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset, " %s:%zu (%s) ", file, line, function);
                 switch (type)
                 {
@@ -150,7 +150,7 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
                 va_end(args);
                 break;
             case ZY_FORMAT_CSV:
-                offset += strftime(msg, log->length, log->time_format, &tm);
+                offset = strftime(msg, log->length, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset, ",%s,%zu,%s,", file, line, function);
                 switch (type)
                 {
@@ -174,18 +174,18 @@ int zy__log_write(const zy_log_t *log, zy_log_type_t type, const char *file, siz
                 switch (type)
                 {
                 case ZY_ERROR:
-                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"error\">\n\t<date>");
+                    offset = snprintf(msg, log->length, "<log max=\"error\">\n\t<date>");
                     break;
                 case ZY_WARN:
-                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"warning\">\n\t<date>");
+                    offset = snprintf(msg, log->length, "<log max=\"warning\">\n\t<date>");
                     break;
                 case ZY_INFO:
-                    offset += snprintf(msg + offset, log->length - offset, "<log max=\"info\">\n\t<date>");
+                    offset = snprintf(msg, log->length, "<log max=\"info\">\n\t<date>");
                     break;
                 default:
                     break;
                 }
-                offset += strftime(msg, log->length, log->time_format, &tm);
+                offset += strftime(msg + offset, log->length - offset, log->time_format, &tm);
                 offset += snprintf(msg + offset, log->length - offset,
                                    "</date>\n\t<location>\n\t\t<file>%s</file>\n\t\t<line>%zu</"
                                    "line>\n\t\t<function>%s</function>\n\t</location>\n\t<message>",
