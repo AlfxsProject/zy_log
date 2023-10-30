@@ -108,13 +108,13 @@ zy_log_message_type_t zy_log_get_max_message_type(const zy_log_t *log)
 
 bool zy_log_set_output_format(zy_log_t *log, zy_format_t format)
 {
-    pthread_mutex_lock((pthread_mutex_t *)&log->output_format_mutex);
     if (format <= ZY_LOG_OUTPUT_FORMAT_MAX)
     {
+        pthread_mutex_lock((pthread_mutex_t *)&log->output_format_mutex);
         log->output_format = format;
+        pthread_mutex_unlock((pthread_mutex_t *)&log->output_format_mutex);
         return true;
     }
-    pthread_mutex_unlock((pthread_mutex_t *)&log->output_format_mutex);
     return false;
 }
 
