@@ -17,19 +17,21 @@
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
 struct zy_log_s
 {
-    const char *const alloc;
-    const int fd;
+    const zy_alloc_t *alloc;
+    int fd;
     size_t message_size;
     zy_log_message_type_t max_message_type;
     zy_format_t output_format;
     const char *time_format;
     pthread_mutex_t message_size_mutex;
+    pthread_mutex_t max_message_type_mutex;
+    pthread_mutex_t output_format_mutex;
+    pthread_mutex_t time_format_mutex;
 };
 
 int zy_log_construct(zy_log_t **log, const zy_alloc_t *alloc, int file_descriptor)
@@ -37,14 +39,16 @@ int zy_log_construct(zy_log_t **log, const zy_alloc_t *alloc, int file_descripto
     int r = zy_malloc(alloc, sizeof(zy_log_t), (void **)log);
     if (r == ZY_OK)
     {
-        const zy_log_t log_init = {.alloc = (const char *const)alloc,
-                                   .fd = file_descriptor,
-                                   .message_size = ZY_LOG_MAX_MESSAGE_SIZE_DEFAULT,
-                                   .max_message_type = ZY_LOG_MESSAGE_TYPE_DEFAULT,
-                                   .output_format = ZY_LOG_OUTPUT_FORMAT_DEFAULT,
-                                   .time_format = ZY_LOG_TIME_FORMAT_DEFAULT};
-        memcpy((void *)*log, &log_init, sizeof(zy_log_t) - sizeof(pthread_mutex_t));
+        (*log)->alloc = alloc;
+        (*log)->fd = file_descriptor;
+        (*log)->message_size = ZY_LOG_MAX_MESSAGE_SIZE_DEFAULT;
+        (*log)->max_message_type = ZY_LOG_MESSAGE_TYPE_DEFAULT;
+        (*log)->output_format = ZY_LOG_OUTPUT_FORMAT_DEFAULT;
+        (*log)->time_format = ZY_LOG_TIME_FORMAT_DEFAULT;
         pthread_mutex_init(&(*log)->message_size_mutex, nullptr);
+        pthread_mutex_init(&(*log)->max_message_type_mutex, nullptr);
+        pthread_mutex_init(&(*log)->output_format_mutex, nullptr);
+        pthread_mutex_init(&(*log)->time_format_mutex, nullptr);
     }
     return r;
 }
@@ -54,6 +58,9 @@ void zy_log_destruct(zy_log_t **log)
     if (*log != nullptr)
     {
         pthread_mutex_destroy(&(*log)->message_size_mutex);
+        pthread_mutex_destroy(&(*log)->max_message_type_mutex);
+        pthread_mutex_destroy(&(*log)->output_format_mutex);
+        pthread_mutex_destroy(&(*log)->time_format_mutex);
         zy_free((const zy_alloc_t *)(*log)->alloc, (void **)log);
     }
 }
@@ -83,7 +90,9 @@ bool zy_log_set_max_message_type(zy_log_t *log, zy_log_message_type_t max)
 {
     if (max <= ZY_LOG_MESSAGE_TYPE_MAX)
     {
+        pthread_mutex_lock((pthread_mutex_t *)&log->max_message_type_mutex);
         log->max_message_type = max;
+        pthread_mutex_unlock((pthread_mutex_t *)&log->max_message_type_mutex);
         return true;
     }
     return false;
@@ -91,32 +100,45 @@ bool zy_log_set_max_message_type(zy_log_t *log, zy_log_message_type_t max)
 
 zy_log_message_type_t zy_log_get_max_message_type(const zy_log_t *log)
 {
-    return log->max_message_type;
+    pthread_mutex_lock((pthread_mutex_t *)&log->max_message_type_mutex);
+    zy_log_message_type_t max_message_type = log->max_message_type;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->max_message_type_mutex);
+    return max_message_type;
 }
 
 bool zy_log_set_output_format(zy_log_t *log, zy_format_t format)
 {
+    pthread_mutex_lock((pthread_mutex_t *)&log->output_format_mutex);
     if (format <= ZY_LOG_OUTPUT_FORMAT_MAX)
     {
         log->output_format = format;
         return true;
     }
+    pthread_mutex_unlock((pthread_mutex_t *)&log->output_format_mutex);
     return false;
 }
 
 zy_format_t zy_log_get_output_format(const zy_log_t *log)
 {
-    return log->output_format;
+    pthread_mutex_lock((pthread_mutex_t *)&log->output_format_mutex);
+    zy_format_t output_format = log->output_format;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->output_format_mutex);
+    return output_format;
 }
 
 bool zy_log_set_time_format(zy_log_t *log, const char *format)
 {
+    pthread_mutex_lock((pthread_mutex_t *)&log->time_format_mutex);
     log->time_format = format;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->time_format_mutex);
     return true;
 }
 const char *zy_log_get_time_format(const zy_log_t *log)
 {
-    return log->time_format;
+    pthread_mutex_lock((pthread_mutex_t *)&log->time_format_mutex);
+    const char *const time_format = log->time_format;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->time_format_mutex);
+    return time_format;
 }
 
 /*
@@ -126,7 +148,23 @@ const char *zy_log_get_time_format(const zy_log_t *log)
 int zy__log_write(const zy_log_t *log, zy_log_message_type_t type, const char *file, size_t line, const char *function,
                   const char *format, ...)
 {
-    if (type <= log->max_message_type)
+    zy_log_message_type_t max_message_type;
+    zy_format_t output_format;
+    const char * time_format;
+
+    pthread_mutex_lock((pthread_mutex_t *)&log->max_message_type_mutex);
+    max_message_type = log->max_message_type;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->max_message_type_mutex);
+
+    pthread_mutex_lock((pthread_mutex_t *)&log->output_format_mutex);
+    output_format = log->output_format;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->output_format_mutex);
+
+    pthread_mutex_lock((pthread_mutex_t *)&log->time_format_mutex);
+    time_format = log->time_format;
+    pthread_mutex_unlock((pthread_mutex_t *)&log->time_format_mutex);
+
+    if (type <= max_message_type)
     {
         char *msg;
         size_t offset = 0;
@@ -143,12 +181,12 @@ int zy__log_write(const zy_log_t *log, zy_log_message_type_t type, const char *f
 
             pthread_mutex_lock((pthread_mutex_t *)&log->message_size_mutex);
 
-            switch (log->output_format)
+            switch (output_format)
             {
             case ZY_FORMAT_CSV:
                 if (b_time)
                 {
-                    offset = strftime(msg, log->message_size, log->time_format, &tm);
+                    offset = strftime(msg, log->message_size, time_format, &tm);
                 }
 
                 offset += snprintf(msg + offset, log->message_size - offset, ",%s,%zu,%s,", file, line, function);
@@ -187,7 +225,7 @@ int zy__log_write(const zy_log_t *log, zy_log_message_type_t type, const char *f
                 }
                 if (b_time)
                 {
-                    offset += strftime(msg + offset, log->message_size - offset, log->time_format, &tm);
+                    offset += strftime(msg + offset, log->message_size - offset, time_format, &tm);
                 }
                 offset += snprintf(msg + offset, log->message_size - offset,
                                    "</date>\n\t<location>\n\t\t<file>%s</file>\n\t\t<line>%zu</"
@@ -202,7 +240,7 @@ int zy__log_write(const zy_log_t *log, zy_log_message_type_t type, const char *f
             case ZY_FORMAT_PLAIN:
                 if (b_time)
                 {
-                    offset = strftime(msg, log->message_size, log->time_format, &tm);
+                    offset = strftime(msg, log->message_size, time_format, &tm);
                 }
                 offset += snprintf(msg + offset, log->message_size - offset, " %s:%zu (%s) ", file, line, function);
                 switch (type)
