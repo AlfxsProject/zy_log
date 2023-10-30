@@ -47,6 +47,8 @@ typedef enum zy_format_e
 #define ZY_LOG_TYPE_MAX (ZY_INFO)
 #define ZY_LOG_FORMAT_MAX (ZY_FORMAT_XML)
 #define ZY_LOG_LENGTH_DEFAULT (8192U)
+#define ZY_LOG_LENGTH_MIN (1024U)
+#define ZY_LOG_LENGTH_MAX (65536U)
 #define ZY_LOG_TIME_FORMAT_DEFAULT ("%a %b %d %H:%M:%S %Z %Y")
 
 /*
@@ -70,8 +72,8 @@ extern "C"
     __attribute__((nonnull)) void zy_log_destruct(zy_log_t **log);
     __attribute__((nonnull)) bool zy_log_set_length(zy_log_t *log, size_t length);
     __attribute__((nonnull)) size_t zy_log_get_length(const zy_log_t *log);
-    __attribute__((nonnull)) bool zy_log_set_filter(zy_log_t *log, zy_log_type_t max);
-    __attribute__((nonnull)) zy_log_type_t zy_log_get_filter(const zy_log_t *log);
+    __attribute__((nonnull)) bool zy_log_set_constraint_max(zy_log_t *log, zy_log_type_t max);
+    __attribute__((nonnull)) zy_log_type_t zy_log_get_constraint_max(const zy_log_t *log);
     __attribute__((nonnull)) bool zy_log_set_output_format(zy_log_t *log, zy_format_t format);
     __attribute__((nonnull)) zy_format_t zy_log_get_output_format(const zy_log_t *log);
     __attribute__((nonnull)) bool zy_log_set_time_format(zy_log_t *log, const char *format);
