@@ -23,12 +23,12 @@
 
 typedef struct zy_log_s zy_log_t;
 
-typedef enum zy_log_type_e
+typedef enum zy_log_message_type_e
 {
     ZY_ERROR,
     ZY_WARN,
     ZY_INFO
-} zy_log_type_t;
+} zy_log_message_type_t;
 
 #ifndef ZY_FORMAT
 #define ZY_FORMAT
@@ -44,11 +44,16 @@ typedef enum zy_format_e
  * Constants
  */
 
-#define ZY_LOG_TYPE_MAX (ZY_INFO)
-#define ZY_LOG_FORMAT_MAX (ZY_FORMAT_XML)
-#define ZY_LOG_LENGTH_DEFAULT (8192U)
-#define ZY_LOG_LENGTH_MIN (1024U)
-#define ZY_LOG_LENGTH_MAX (65536U)
+#define ZY_LOG_MESSAGE_TYPE_DEFAULT (ZY_ERROR)
+#define ZY_LOG_MESSAGE_TYPE_MAX (ZY_INFO)
+
+#define ZY_LOG_OUTPUT_FORMAT_DEFAULT (ZY_FORMAT_PLAIN)
+#define ZY_LOG_OUTPUT_FORMAT_MAX (ZY_FORMAT_XML)
+
+#define ZY_LOG_MAX_MESSAGE_SIZE_DEFAULT (8192U)
+#define ZY_LOG_MAX_MESSAGE_SIZE_MIN (1024U)
+#define ZY_LOG_MAX_MESSAGE_SIZE_MAX (65536U)
+
 #define ZY_LOG_TIME_FORMAT_DEFAULT ("%a %b %d %H:%M:%S %Z %Y")
 
 /*
@@ -70,18 +75,22 @@ extern "C"
 
     __attribute__((nonnull)) int zy_log_construct(zy_log_t **log, const zy_alloc_t *alloc, int file_descriptor);
     __attribute__((nonnull)) void zy_log_destruct(zy_log_t **log);
-    __attribute__((nonnull)) bool zy_log_set_length(zy_log_t *log, size_t length);
-    __attribute__((nonnull)) size_t zy_log_get_length(const zy_log_t *log);
-    __attribute__((nonnull)) bool zy_log_set_constraint_max(zy_log_t *log, zy_log_type_t max);
-    __attribute__((nonnull)) zy_log_type_t zy_log_get_constraint_max(const zy_log_t *log);
+
+    __attribute__((nonnull)) bool zy_log_set_max_message_size(zy_log_t *log, size_t size);
+    __attribute__((nonnull)) size_t zy_log_get_max_message_size(const zy_log_t *log);
+
+    __attribute__((nonnull)) bool zy_log_set_max_message_type(zy_log_t *log, zy_log_message_type_t max);
+    __attribute__((nonnull)) zy_log_message_type_t zy_log_get_max_message_type(const zy_log_t *log);
+
     __attribute__((nonnull)) bool zy_log_set_output_format(zy_log_t *log, zy_format_t format);
     __attribute__((nonnull)) zy_format_t zy_log_get_output_format(const zy_log_t *log);
+
     __attribute__((nonnull)) bool zy_log_set_time_format(zy_log_t *log, const char *format);
     __attribute__((nonnull)) const char *zy_log_get_time_format(const zy_log_t *log);
 
     /* Internal Use Only. */
     __attribute__((nonnull)) __attribute__((format(printf, 6, 7))) int zy__log_write(const zy_log_t *log,
-                                                                                     zy_log_type_t type,
+                                                                                     zy_log_message_type_t type,
                                                                                      const char *file, size_t line,
                                                                                      const char *function,
                                                                                      const char *format, ...);
